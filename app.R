@@ -155,7 +155,7 @@ server <- function(input, output, session) {
     
     selectInput(
       inputId = "graph_item",
-      label = "Graph Item:",
+      label = "Select which item to graph:",
       choices = data$item,
       selected = data$item[1]
     )
