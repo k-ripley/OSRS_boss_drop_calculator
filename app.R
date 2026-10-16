@@ -8,6 +8,7 @@ library(readr)
 library(tidyr)
 library(DT)
 library(scales)
+library(bslib)
 library(plotly)
 
 
@@ -36,21 +37,120 @@ boss_loot_data <- boss_loot_data %>%
     cols = rarity,
     delim = "/",
     names = c("num", "den"),
-    cols_remove = FALSE
-  ) %>%
+    cols_remove = FALSE) %>%
   mutate(
     num = as.numeric(num),
     den = as.numeric(den),
-    probability = num / den
-  )
-
+    probability = num / den)
 
 # UI
 ####
 
 ui <- fluidPage(
-  titlePanel("OSRS Boss Drop Calculator"),
+  theme = bs_theme(
+    version = 5,
+    bootswatch = "darkly"),
   
+  tags$head(
+    tags$style(
+      HTML(
+        # CSS to change the color/formatting of some UI elements
+        "
+        /* INPUT CONTROLS */
+        
+        .selectize-input,
+        .selectize-control.single .selectize-input,
+        .selectize-control.multi .selectize-input {
+          background-color: #343a40 !important;
+          background-image: none !important;
+          color: #f8f9fa !important;
+          border: 1px solid #6c757d !important;
+          box-shadow: none !important;
+        }
+        
+        .selectize-input .item {
+          color: #f8f9fa !important;
+        }
+        
+        .selectize-input input {
+          color: #f8f9fa !important;
+          background: transparent !important;
+        }
+        
+        .selectize-input input::placeholder {
+          color: #adb5bd !important;
+        }
+        
+        /* DROPDOWN MENU */
+        
+        .selectize-dropdown,
+        .selectize-dropdown-content {
+          background-color: #343a40 !important;
+          color: #f8f9fa !important;
+          border-color: #6c757d !important;
+        }
+        
+        .selectize-dropdown .option {
+          background-color: #343a40 !important;
+          color: #f8f9fa !important;
+        }
+        
+        .selectize-dropdown .option:hover,
+        .selectize-dropdown .option.active {
+          background-color: #495057 !important;
+          color: #ffffff !important;
+        }
+        
+        /* INPUT FOCUS */
+        
+        .selectize-input.focus,
+        .selectize-input:focus {
+          background-color: #3d444b !important;
+          color: #ffffff !important;
+          border-color: #6ea8fe !important;
+          box-shadow:
+            0 0 0 0.2rem
+            rgba(110, 168, 254, 0.25) !important;
+        }
+        
+        /* NUMBER INPUTS */
+        
+        input.form-control,
+        input[type='number'].form-control,
+        input[type='number'] {
+          background-color: #343a40 !important;
+          background-image: none !important;
+          color: #f8f9fa !important;
+          border: 1px solid #6c757d !important;
+          box-shadow: none !important;
+        }
+        
+        input.form-control:focus,
+        input[type='number']:focus {
+          background-color: #3d444b !important;
+          color: #ffffff !important;
+          border-color: #6ea8fe !important;
+          box-shadow:
+            0 0 0 0.2rem
+            rgba(110, 168, 254, 0.25) !important;
+        }
+        
+        input[type='number']::-webkit-inner-spin-button,
+        input[type='number']::-webkit-outer-spin-button {
+          opacity: 1 !important;
+          filter: invert(1);
+        }
+
+        /* SIDEBAR */
+        
+        .sidebar,
+        .well {
+          background-color: #212529;
+        }
+        "
+      ))),
+  
+  titlePanel("OSRS Boss Drop Calculator"),
   sidebarLayout(
     sidebarPanel(
       selectInput(
@@ -58,202 +158,150 @@ ui <- fluidPage(
         label = "Select Boss:",
         choices = c(
           "Select a boss..." = "",
-          sort(unique(boss_loot_data$boss))
-        ),
-        selected = ""
-      ),
-      
+          sort(
+            unique(boss_loot_data$boss))),
+        selected = ""),
       numericInput(
         inputId = "kills",
         label = "Number of kills:",
         value = 0,
         min = 0,
-        step = 1
-      ),
-      
+        step = 1),
       conditionalPanel(
         condition = "input.boss != ''",
-        
         uiOutput("graph_item_selector"),
-        
         hr(),
-        
         h4("Your Actual Drops"),
-        
         p("Enter the number of each unique item you have actually received."),
-        
-        uiOutput("actual_drop_inputs")
-      )
-    ),
+        uiOutput("actual_drop_inputs"))),
     
     mainPanel(
       conditionalPanel(
         condition = "input.boss == ''",
-        
-        h3("Select a boss to get started"),
-        
-        p("Choose a boss from the dropdown menu to view its unique drops.")
-      ),
+        div(
+          style = "
+          text-align: center;
+          padding: 60px 20px;
+          color: var(--bs-secondary-color);",
+          h3("Select a boss to get started"),
+          p("Choose a boss from the dropdown menu to view its unique drops."))),
       
       conditionalPanel(
         condition = "input.boss != ''",
-        
         h3(textOutput("boss_title")),
-        
-        DTOutput("drop_table"),
-        
-        h3("Probability of Receiving at Least One Drop"),
-        
-        plotlyOutput("probability_plot", height = "500px")
-      ),
+        div(
+          class = "results-wrapper",
+          DTOutput("drop_table")),
+        h3(class = "graph-title",
+           "Probability of Receiving at Least One Drop"),
+        plotlyOutput(
+          "probability_plot",
+          height = "500px")),
       
       div(
-        p("*Note: These tables do not include guaranteed drops, such as Gryphon Feathers or Frozen Tears."),
+        class = "calculator-notes",
         
-        p("**Note: This calculator does not include group bosses whose drop probabilities scale off of player performance, such as Zalcano or Nightmare."),
+        p("*Note: These tables do not include guaranteed drops, such as Gryphon
+          Feathers or Frozen Tears."),
+        
+        p("**Note: This calculator does not include group bosses whose drop 
+          probabilities scale off of player performance, such as Zalcano 
+          or Nightmare."),
         
         p("RuneScape is a registered trademark of Jagex Ltd."),
         
-        p(
-          "Data sourced from the ",
-          a(
-            "Old School RuneScape Wiki",
+        p("Data sourced from the ",
+          a("Old School RuneScape Wiki",
             href = "https://oldschool.runescape.wiki/",
-            target = "_blank"
-          )
-        )
-      )
-    )
-  )
-)
-
+            target = "_blank"))
+      ))))
 
 # SERVER
 ########
 
-server <- function(input, output, session) {
-  
+server <- function(
+    input,
+    output,
+    session
+) {
   boss_data <- reactive({
     req(input$boss != "")
-    
     boss_loot_data %>%
-      filter(boss == input$boss)
-  })
-  
-  
+      filter(boss == input$boss)})
   output$boss_title <- renderText({
     req(input$boss != "")
-    
-    paste(input$boss, "Unique Drop Results")
-  })
-  
-  
+    paste(
+      input$boss,
+      "Unique Drop Results")})
   output$graph_item_selector <- renderUI({
     req(input$boss != "")
-    
     data <- boss_data()
-    
     selectInput(
       inputId = "graph_item",
       label = "Select which item to graph:",
       choices = data$item,
-      selected = data$item[1]
-    )
-  })
-  
-  
+      selected = data$item[1])})
   output$actual_drop_inputs <- renderUI({
     req(input$boss != "")
-    
     data <- boss_data()
-    
     tagList(
       lapply(
-        seq_len(nrow(data)),
+        seq_len(
+          nrow(data)
+        ),
         function(i) {
           numericInput(
             inputId = paste0("actual_", i),
             label = data$item[i],
             value = 0,
             min = 0,
-            step = 1
-          )
-        }
-      )
-    )
-  })
-  
-  
+            step = 1)}))})
   actual_drops <- reactive({
     data <- boss_data()
-    
     sapply(
       seq_len(nrow(data)),
       function(i) {
         value <- input[[paste0("actual_", i)]]
-        
-        if (is.null(value) || is.na(value)) {
-          return(0)
-        }
-        
-        value
-      }
-    )
-  })
-  
+        if (
+          is.null(value) ||
+          is.na(value)
+        ) {return(0)}
+        value})})
   
   output$drop_table <- renderDT({
     data <- boss_data()
-    
     kills <- input$kills
     actual <- actual_drops()
-    
-    expected <- kills * data$probability
-    
+    expected <- (kills * data$probability)
     exactly <- dbinom(
       actual,
       size = kills,
-      prob = data$probability
-    )
-    
+      prob = data$probability)
     at_most <- pbinom(
       actual,
       size = kills,
-      prob = data$probability
-    )
-    
+      prob = data$probability)
     more_than <- 1 - at_most
-    
     results <- data.frame(
       Item = data$item,
       `Drop Rate` = data$rarity,
       `Actual Drops` = actual,
-      
       `Expected Drops` = format(
         round(expected, 2),
         big.mark = ",",
-        nsmall = 2
-      ),
-      
+        nsmall = 2),
       `Chance of Exactly Actual Drops` = percent(
         exactly,
-        accuracy = 0.001
-      ),
-      
+        accuracy = 0.001),
       `Chance of Actual Drops or Fewer` = percent(
         at_most,
-        accuracy = 0.001
-      ),
-      
+        accuracy = 0.001),
       `Chance of More than Actual Drops` = percent(
         more_than,
-        accuracy = 0.001
-      ),
+        accuracy = 0.001),
       # Three decimal places were used to allow for more accuracy when
       # users are going very dry on a drop. Not sure I like how it looks.
-      check.names = FALSE
-    )
-    
+      check.names = FALSE)
     datatable(
       results,
       rownames = FALSE,
@@ -272,30 +320,22 @@ server <- function(input, output, session) {
           list(targets = 3, width = "110px"),
           list(targets = 4, width = "145px"),
           list(targets = 5, width = "155px"),
-          list(targets = 6, width = "155px")
-          # This is specifying how it's displayed. The column widths are present
-          # to keep the table from behaving weird when switching bosses. Columns kept
-          # breaking when they didn't have specified widths.
-        )
-      )
-    )
-  })
-  
+          list(targets = 6, width = "155px"))))})
+  # This is specifying how it's displayed. The column widths are present
+  # to keep the table from behaving weird when switching bosses. Columns kept
+  # breaking when they didn't have specified widths.
   
   output$probability_plot <- renderPlotly({
     req(
       input$boss != "",
-      input$graph_item
-    )
-    
+      input$graph_item)
     data <- boss_data()
     
     selected_item <- data %>%
       filter(item == input$graph_item)
-    
     req(nrow(selected_item) == 1)
-    
     p <- selected_item$probability
+    
     current_kills <- input$kills
     
     # This determines the range of the x-axis on the graph to keep the curve and
@@ -316,22 +356,15 @@ server <- function(input, output, session) {
     
     max_kills <- ceiling(max_kills)
     
-    kill_values <- seq(
-      0,
-      max_kills,
-      length.out = 500
-    )
+    kill_values <- seq(0, max_kills, length.out = 500)
     # 500 points is enough to keep the curve smooth without generating
     # unnecessary data and slowing the performance
-    
-    probabilities <- 1 - (1 - p)^kill_values
-    
+    probabilities <- (1 - (1 - p) ^ kill_values)
     graph_data <- data.frame(
       kills = kill_values,
-      probability = probabilities
-    )
+      probability = probabilities)
     
-    current_probability <- 1 - (1 - p)^current_kills
+    current_probability <- (1 - (1 - p) ^ current_kills)
     
     plot <- plot_ly(
       data = graph_data,
@@ -339,74 +372,84 @@ server <- function(input, output, session) {
       y = ~probability,
       type = "scatter",
       mode = "lines",
+      line = list(
+        color = "#2C7FB8",
+        width = 3),
       hovertemplate = paste0(
         "Kills: %{x:,.0f}",
         "<br>",
         "Chance: %{y:.2%}",
-        "<extra></extra>"
-      )
-    )
-    
+        "<extra></extra>"))
     if (current_kills <= max_kills) {
-      
       plot <- plot %>%
         add_segments(
           x = current_kills,
           xend = current_kills,
           y = 0,
           yend = current_probability,
+          line = list(
+            color = "#D95F02",
+            dash = "dash",
+            width = 2),
           hoverinfo = "skip",
-          inherit = FALSE
-        )
-      
+          inherit = FALSE)
       plot <- plot %>%
         add_markers(
           x = current_kills,
           y = current_probability,
+          marker = list(
+            color = "#D95F02",
+            size = 10),
           hovertemplate = paste0(
             "Your KC: ",
             format(
               current_kills,
               big.mark = ",",
-              scientific = FALSE
-            ),
+              scientific = FALSE),
             "<br>",
             "Chance: ",
             sprintf(
               "%.2f%%",
-              current_probability * 100
-            ),
-            "<extra></extra>"
-          ),
-          inherit = FALSE
-        )
-    }
+              current_probability * 100),
+            "<extra></extra>"),
+          inherit = FALSE)}
+    
+    graph_background <- "#212529"
+    graph_text <- "#F8F9FA"
+    graph_grid <- "#495057"
     
     plot %>%
       layout(
         xaxis = list(
           title = "Number of Kills",
           rangemode = "tozero",
-          tickformat = ",d"
-        ),
-        
+          tickformat = ",d",
+          color = graph_text,
+          gridcolor = graph_grid,
+          zerolinecolor = graph_grid),
         yaxis = list(
           title = "Chance of At Least One Drop",
           tickformat = ".0%",
-          range = c(0, 1)
-        ),
-        
+          range = c(
+            0,
+            1),
+          color = graph_text,
+          gridcolor = graph_grid,
+          zerolinecolor = graph_grid),
+        plot_bgcolor = graph_background,
+        paper_bgcolor = graph_background,
+        font = list(color = graph_text),
+        margin = list(
+          l = 70,
+          r = 30,
+          b = 60,
+          t = 20),
         hovermode = "x unified",
-        showlegend = FALSE
-      )
-  })
-}
-
+        showlegend = FALSE)})}
 
 # RUN IT
 ########
 
 shinyApp(
   ui = ui,
-  server = server
-)
+  server = server)
